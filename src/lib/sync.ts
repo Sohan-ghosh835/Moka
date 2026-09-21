@@ -68,84 +68,19 @@ function getApiUrl(): string | null {
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let lastSyncController: AbortController | null = null;
 
+// ─── Sync to Cloud (Pure Local Storage Mode) ──────────────────────────────────
 export function syncToCloud(
-  data: SyncPayload,
-  onStatus: (status: SyncStatus) => void
+  _data: SyncPayload,
+  _onStatus: (status: SyncStatus) => void
 ): void {
-  const apiUrl = getApiUrl();
-  if (!apiUrl) return; // Cloud sync not configured — silent no-op
-
-  if (!navigator.onLine) {
-    onStatus("offline");
-    return;
-  }
-
-  // Cancel previous in-flight request if a newer sync is triggered
-  if (lastSyncController) lastSyncController.abort();
-  if (syncTimer) clearTimeout(syncTimer);
-
-  syncTimer = setTimeout(async () => {
-    const controller = new AbortController();
-    lastSyncController = controller;
-
-    onStatus("syncing");
-    try {
-      // Abort if the request takes longer than 10 seconds (Render free-tier cold start)
-      const timeout = setTimeout(() => controller.abort(), 10_000);
-      const res = await fetch(`${apiUrl}/api/sync`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: getOrCreateUserId(),
-          entries: data.entries,
-          todos: data.todos,
-          privacy: data.privacy,
-          tags: data.tags,
-        }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-
-      if (res.ok) {
-        onStatus("synced");
-      } else {
-        console.warn("Cloud sync returned non-OK status:", res.status);
-        onStatus("error");
-      }
-    } catch (err: unknown) {
-      if (err instanceof DOMException && err.name === "AbortError") return; // superseded
-      console.warn("Background cloud sync failed (will retry on next change):", err);
-      onStatus("error");
-    }
-  }, 2000);
+  // Operating 100% locally from localStorage / IPC — remote DB disabled
+  return;
 }
 
-// ─── Fetch from Cloud (Startup Pull) ─────────────────────────────────────────
+// ─── Fetch from Cloud (Pure Local Storage Mode) ───────────────────────────────
 export async function fetchFromCloud(): Promise<SyncPayload | null> {
-  const apiUrl = getApiUrl();
-  if (!apiUrl || !navigator.onLine) return null;
-
-  try {
-    // Abort if the request takes longer than 5 seconds so the app
-    // doesn't appear frozen while Render cold-starts
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 5_000);
-    const res = await fetch(`${apiUrl}/api/data/${getOrCreateUserId()}`, {
-      signal: controller.signal,
-    });
-    clearTimeout(timeout);
-    if (!res.ok) return null;
-    const data = await res.json();
-    return {
-      entries: Array.isArray(data.entries) ? data.entries : [],
-      todos: Array.isArray(data.todos) ? data.todos : [],
-      privacy: typeof data.privacy === "boolean" ? data.privacy : false,
-      tags: Array.isArray(data.tags) ? data.tags : [],
-    };
-  } catch (err) {
-    console.warn("Cloud fetch on startup failed:", err);
-    return null;
-  }
+  // Operating 100% locally from localStorage / IPC — remote DB disabled
+  return null;
 }
 
 // ─── Merge Helpers ────────────────────────────────────────────────────────────
