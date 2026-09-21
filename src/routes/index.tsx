@@ -20,7 +20,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BottomBar, NavTab } from "../components/BottomBar";
 import Carousel, { CarouselItemData } from "../components/Carousel";
-import SpringCheck from "../components/SpringCheck";
 import { Slider } from "../components/ui/slider";
 import {
   type SyncPayload,
@@ -298,6 +297,7 @@ function Waypoint() {
 
   const filteredTodos = useMemo(() => {
     return todos.filter((task) => {
+      if (!task || !task.id || typeof task.text !== "string") return false;
       const matchesFilter =
         todoFilter === "all"
           ? true
@@ -313,8 +313,9 @@ function Waypoint() {
   }, [todos, todoFilter, todoQuery]);
 
   const todoStats = useMemo(() => {
-    const total = todos.length;
-    const completed = todos.filter((t) => t.completed).length;
+    const valid = todos.filter((t) => t && t.id);
+    const total = valid.length;
+    const completed = valid.filter((t) => t.completed).length;
     const pending = total - completed;
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { total, completed, pending, rate };
@@ -1276,12 +1277,23 @@ function Waypoint() {
                                 #{task.category}
                               </span>
                             )}
-                            <span>
-                              {new Date(task.createdAt).toLocaleDateString(undefined, {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </span>
+                            {task.createdAt && (
+                              <span>
+                                {(() => {
+                                  try {
+                                    const d = new Date(task.createdAt);
+                                    return isNaN(d.getTime())
+                                      ? ""
+                                      : d.toLocaleDateString(undefined, {
+                                          month: "short",
+                                          day: "numeric",
+                                        });
+                                  } catch {
+                                    return "";
+                                  }
+                                })()}
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
