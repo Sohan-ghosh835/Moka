@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from "motion/react";
 import "./SpringCheck.css";
 
@@ -78,18 +78,18 @@ export default function SpringCheck({
   const cfg = useRef({ doneOpacity, strikeLag });
   cfg.current = { doneOpacity, strikeLag };
 
-  const write = (value: number) => {
+  const write = useCallback((value: number) => {
     const r = readings(value, cfg.current.doneOpacity, cfg.current.strikeLag);
     if (fillRef.current) fillRef.current.style.transform = r.fill;
     if (boxRef.current) boxRef.current.style.transform = r.box;
     if (tickRef.current) tickRef.current.style.strokeDashoffset = String(r.tick);
     if (wordRef.current) wordRef.current.style.opacity = String(r.word);
     if (ruleRef.current) ruleRef.current.style.transform = r.rule;
-  };
+  }, []);
   useMotionValueEvent(t, "change", write);
   useLayoutEffect(() => {
     write(t.get());
-  });
+  }, [t, write]);
 
   useEffect(() => {
     const target = on ? 1 : 0;
