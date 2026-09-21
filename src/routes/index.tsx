@@ -1239,20 +1239,24 @@ function Waypoint() {
                       className="group flex items-start justify-between gap-3 py-3 border-b border-border/40 last:border-0"
                     >
                       <div className="min-w-0 flex-1 flex items-start gap-3">
-                        <SpringCheck
-                          checked={task.completed}
-                          onChange={() => toggleTodo(task.id)}
-                          label=""
-                          strike="none"
-                          color="oklch(0.83 0.075 351)"
-                          fillColor="oklch(0.46 0.13 353)"
-                          checkColor="#ffffff"
-                          boxSize={22}
-                          boxRadius={7}
-                          bounce={0.25}
-                          ariaLabel={`Toggle task: ${task.text}`}
-                          className="shrink-0 mt-0.5"
-                        />
+                        <button
+                          type="button"
+                          role="checkbox"
+                          aria-checked={task.completed}
+                          aria-label={`Toggle task: ${task.text}`}
+                          onClick={() => toggleTodo(task.id)}
+                          className={`shrink-0 mt-0.5 size-[22px] rounded-[7px] border-2 flex items-center justify-center transition-all duration-200 ${
+                            task.completed
+                              ? "bg-[oklch(0.46_0.13_353)] border-[oklch(0.46_0.13_353)] scale-95"
+                              : "border-[oklch(0.83_0.075_351)] bg-transparent hover:bg-[oklch(0.83_0.075_351)]/10"
+                          }`}
+                        >
+                          {task.completed && (
+                            <svg viewBox="0 0 24 24" className="size-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M5 14L8.5 17.5L19 6.5" />
+                            </svg>
+                          )}
+                        </button>
                         <div
                           onClick={() => toggleTodo(task.id)}
                           className="min-w-0 flex-1 flex flex-col gap-1 cursor-pointer select-none"

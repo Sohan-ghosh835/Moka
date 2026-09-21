@@ -81,6 +81,8 @@ export function syncToCloud(
 
     onStatus("syncing");
     try {
+      // Abort if the request takes longer than 10 seconds (Render free-tier cold start)
+      const timeout = setTimeout(() => controller.abort(), 10_000);
       const res = await fetch(`${apiUrl}/api/sync`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -93,6 +95,7 @@ export function syncToCloud(
         }),
         signal: controller.signal,
       });
+      clearTimeout(timeout);
 
       if (res.ok) {
         onStatus("synced");
@@ -114,7 +117,14 @@ export async function fetchFromCloud(): Promise<SyncPayload | null> {
   if (!apiUrl || !navigator.onLine) return null;
 
   try {
-    const res = await fetch(`${apiUrl}/api/data/${getOrCreateUserId()}`);
+    // Abort if the request takes longer than 5 seconds so the app
+    // doesn't appear frozen while Render cold-starts
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 5_000);
+    const res = await fetch(`${apiUrl}/api/data/${getOrCreateUserId()}`, {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
     if (!res.ok) return null;
     const data = await res.json();
     return {
