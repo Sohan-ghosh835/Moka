@@ -158,7 +158,7 @@ function Waypoint() {
             if (typeof loaded.privacy === "boolean") localPrivacy = loaded.privacy;
             if (Array.isArray(loaded.tags) && loaded.tags.length) localTags = loaded.tags;
             if (Array.isArray(loaded.todos)) {
-              localTodos = loaded.todos.filter((t) => t.id !== "td1" && t.id !== "td2");
+              localTodos = loaded.todos.filter((t) => t && t.id && t.id !== "td1" && t.id !== "td2");
             }
           }
         }
@@ -176,7 +176,7 @@ function Waypoint() {
             if (typeof parsed.privacy === "boolean") localPrivacy = parsed.privacy;
             if (Array.isArray(parsed.tags) && parsed.tags.length) localTags = parsed.tags;
             if (Array.isArray(parsed.todos)) {
-              localTodos = parsed.todos.filter((t) => t.id !== "td1" && t.id !== "td2");
+              localTodos = parsed.todos.filter((t) => t && t.id && t.id !== "td1" && t.id !== "td2");
             }
           } catch (e) {
             console.error(e);
@@ -226,21 +226,43 @@ function Waypoint() {
     return registerOnlineSync(getSyncPayload, setSyncStatus);
   }, [ready, getSyncPayload]);
 
+  function generateUUID(): string {
+    if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+      return crypto.randomUUID();
+    }
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+      const r = (Math.random() * 16) | 0;
+      const v = c === "x" ? r : (r & 0x3) | 0x8;
+      return v.toString(16);
+    });
+  }
+
   const filteredEntries = useMemo(
-    () => entries.filter((entry) => {
-      const q = query.toLowerCase();
-      const noteMatch = entry.note.toLowerCase().includes(q);
-      const tagMatch = entry.tags?.some((t) => t.toLowerCase().includes(q));
-      return noteMatch || tagMatch;
-    }),
+    () =>
+      entries.filter((entry) => {
+        if (!entry || typeof entry !== "object") return false;
+        const q = query.toLowerCase();
+        const noteMatch =
+          typeof entry.note === "string" ? entry.note.toLowerCase().includes(q) : false;
+        const tagMatch = Array.isArray(entry.tags)
+          ? entry.tags.some((t) => typeof t === "string" && t.toLowerCase().includes(q))
+          : false;
+        return noteMatch || tagMatch;
+      }),
     [entries, query],
   );
-  
-  const average = entries.length
-    ? entries.reduce((sum, entry) => sum + entry.mood, 0) / entries.length
-    : 0;
-    
-  const streak = new Set(entries.map((entry) => entry.createdAt.slice(0, 10))).size;
+
+  const average = useMemo(() => {
+    const valid = entries.filter((e) => e && typeof e.mood === "number" && !isNaN(e.mood));
+    return valid.length ? valid.reduce((sum, entry) => sum + entry.mood, 0) / valid.length : 0;
+  }, [entries]);
+
+  const streak = useMemo(() => {
+    const validDates = entries
+      .filter((entry) => entry && typeof entry.createdAt === "string" && entry.createdAt.length >= 10)
+      .map((entry) => entry.createdAt.slice(0, 10));
+    return new Set(validDates).size;
+  }, [entries]);
 
   function toggleTagSelection(tagName: string) {
     setSelectedTagNames((prev) =>
@@ -251,8 +273,8 @@ function Waypoint() {
   function addNewTag() {
     const clean = newTagInput.trim().toLowerCase();
     if (!clean) return;
-    if (!availableTags.some((t) => t.name === clean)) {
-      setAvailableTags((prev) => [...prev, { id: crypto.randomUUID(), name: clean }]);
+    if (!availableTags.some((t) => t && t.name === clean)) {
+      setAvailableTags((prev) => [...prev, { id: generateUUID(), name: clean }]);
     }
     if (!selectedTagNames.includes(clean)) {
       setSelectedTagNames((prev) => [...prev, clean]);
@@ -270,33 +292,36 @@ function Waypoint() {
     const text = newTodoText.trim();
     if (!text) return;
     const newTask: TodoTask = {
-      id: crypto.randomUUID(),
+      id: generateUUID(),
       text,
       completed: false,
       priority: newTodoPriority,
       category: newTodoCategory.trim().toLowerCase() || "general",
       createdAt: new Date().toISOString(),
     };
-    setTodos((prev) => [newTask, ...prev]);
+    setTodos((prev) => [newTask, ...(Array.isArray(prev) ? prev.filter(Boolean) : [])]);
     setNewTodoText("");
   }
 
   function toggleTodo(id: string) {
+    if (!id) return;
     setTodos((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t))
+      (Array.isArray(prev) ? prev : []).map((t) => (t && t.id === id ? { ...t, completed: !t.completed } : t))
     );
   }
 
   function deleteTodo(id: string) {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
+    if (!id) return;
+    setTodos((prev) => (Array.isArray(prev) ? prev : []).filter((t) => t && t.id !== id));
   }
 
   function clearCompletedTodos() {
-    setTodos((prev) => prev.filter((t) => !t.completed));
+    setTodos((prev) => (Array.isArray(prev) ? prev : []).filter((t) => t && !t.completed));
   }
 
   const filteredTodos = useMemo(() => {
-    return todos.filter((task) => {
+    const safeList = Array.isArray(todos) ? todos : [];
+    return safeList.filter((task) => {
       if (!task || !task.id || typeof task.text !== "string") return false;
       const matchesFilter =
         todoFilter === "all"
@@ -304,18 +329,19 @@ function Waypoint() {
           : todoFilter === "active"
           ? !task.completed
           : task.completed;
-      const q = todoQuery.toLowerCase();
-      const matchesQuery =
-        task.text.toLowerCase().includes(q) ||
-        (task.category && task.category.toLowerCase().includes(q));
-      return matchesFilter && matchesQuery;
+      const q = (todoQuery || "").toLowerCase();
+      const textMatch = task.text.toLowerCase().includes(q);
+      const categoryMatch =
+        typeof task.category === "string" && task.category.toLowerCase().includes(q);
+      return matchesFilter && (textMatch || categoryMatch);
     });
   }, [todos, todoFilter, todoQuery]);
 
   const todoStats = useMemo(() => {
-    const valid = todos.filter((t) => t && t.id);
+    const safeList = Array.isArray(todos) ? todos : [];
+    const valid = safeList.filter((t) => t && t.id);
     const total = valid.length;
-    const completed = valid.filter((t) => t.completed).length;
+    const completed = valid.filter((t) => Boolean(t.completed)).length;
     const pending = total - completed;
     const rate = total > 0 ? Math.round((completed / total) * 100) : 0;
     return { total, completed, pending, rate };
@@ -325,8 +351,10 @@ function Waypoint() {
   const trendValues = useMemo(() => {
     const daysMap: Record<string, number[]> = {};
     entries.forEach((e) => {
-      const day = e.createdAt.slice(0, 10);
-      (daysMap[day] = daysMap[day] || []).push(e.mood);
+      if (e && typeof e.createdAt === "string" && e.createdAt.length >= 10 && typeof e.mood === "number") {
+        const day = e.createdAt.slice(0, 10);
+        (daysMap[day] = daysMap[day] || []).push(e.mood);
+      }
     });
     const result: { dayLabel: string; value: number | null }[] = [];
     const now = new Date();
@@ -346,8 +374,10 @@ function Waypoint() {
   const contribHeatmap = useMemo(() => {
     const entriesByDay: Record<string, number[]> = {};
     entries.forEach((e) => {
-      const day = e.createdAt.slice(0, 10);
-      (entriesByDay[day] = entriesByDay[day] || []).push(e.mood);
+      if (e && typeof e.createdAt === "string" && e.createdAt.length >= 10 && typeof e.mood === "number") {
+        const day = e.createdAt.slice(0, 10);
+        (entriesByDay[day] = entriesByDay[day] || []).push(e.mood);
+      }
     });
 
     const today = new Date();
@@ -426,7 +456,7 @@ function Waypoint() {
     const finalNote = trimmedNote || `Logged ${moodLabel(selectedMood).toLowerCase()} mood`;
     setEntries((current) => [
       {
-        id: crypto.randomUUID(),
+        id: generateUUID(),
         mood: selectedMood,
         note: finalNote,
         createdAt,
@@ -1041,7 +1071,7 @@ function Waypoint() {
                 </div>
                 <div className="rounded-xl bg-primary/15 p-3.5 ring-1 ring-primary/30">
                   <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Tasks Planned</p>
-                  <p className="mt-1 font-display text-2xl font-bold text-foreground">{todos.length}</p>
+                  <p className="mt-1 font-display text-2xl font-bold text-foreground">{Array.isArray(todos) ? todos.length : 0}</p>
                 </div>
                 <div className="rounded-xl bg-primary/15 p-3.5 ring-1 ring-primary/30">
                   <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">Privacy Mode</p>
@@ -1221,7 +1251,7 @@ function Waypoint() {
                     ))}
                   </div>
 
-                  {todos.some((t) => t.completed) && (
+                  {todos.some((t) => t && t.completed) && (
                     <button
                       onClick={clearCompletedTodos}
                       className="rounded px-2.5 py-1 font-mono text-[10px] text-muted-foreground ring-1 ring-border hover:text-foreground hover:bg-background/60 transition-colors"
@@ -1325,7 +1355,7 @@ function Waypoint() {
                   ))
                 ) : (
                   <div className="py-12 text-center font-mono text-xs text-muted-foreground italic">
-                    {todos.length ? "No tasks match your filter/search criteria." : "No tasks added yet — create your first task above!"}
+                    {Array.isArray(todos) && todos.length ? "No tasks match your filter/search criteria." : "No tasks added yet — create your first task above!"}
                   </div>
                 )}
               </div>

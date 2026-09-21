@@ -36,12 +36,21 @@ export type SyncPayload = {
 export type SyncStatus = "idle" | "syncing" | "synced" | "offline" | "error";
 
 // ─── Persistent Anonymous User ID ────────────────────────────────────────────
-const USER_ID_KEY = "moka_device_user_id";
+function safeUUID(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 export function getOrCreateUserId(): string {
   let id = localStorage.getItem(USER_ID_KEY);
   if (!id) {
-    id = crypto.randomUUID();
+    id = safeUUID();
     localStorage.setItem(USER_ID_KEY, id);
   }
   return id;
@@ -145,29 +154,69 @@ export async function fetchFromCloud(): Promise<SyncPayload | null> {
 
 export function mergeEntries(local: Entry[], cloud: Entry[]): Entry[] {
   const map = new Map<string, Entry>();
-  // Cloud entries go in first
-  for (const e of cloud) map.set(e.id, e);
-  // Local entries overwrite — local is latest truth for this device
-  for (const e of local) map.set(e.id, e);
-  // Sort newest first
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const processItem = (e: any) => {
+    if (e && typeof e === "object" && e.id && typeof e.mood === "number") {
+      const sanitized: Entry = {
+        id: String(e.id),
+        mood: Math.max(1, Math.min(5, Math.round(Number(e.mood) || 3))) as Mood,
+        note: typeof e.note === "string" ? e.note : "",
+        createdAt: typeof e.createdAt === "string" && e.createdAt ? e.createdAt : new Date().toISOString(),
+        tags: Array.isArray(e.tags) ? e.tags.filter((t: any) => typeof t === "string") : [],
+      };
+      map.set(sanitized.id, sanitized);
+    }
+  };
+  if (Array.isArray(cloud)) cloud.forEach(processItem);
+  if (Array.isArray(local)) local.forEach(processItem);
+
+  return Array.from(map.values()).sort((a, b) => {
+    const tA = new Date(a.createdAt).getTime();
+    const tB = new Date(b.createdAt).getTime();
+    return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+  });
 }
 
 export function mergeTodos(local: TodoTask[], cloud: TodoTask[]): TodoTask[] {
   const map = new Map<string, TodoTask>();
-  for (const t of cloud) map.set(t.id, t);
-  for (const t of local) map.set(t.id, t);
-  return Array.from(map.values()).sort(
-    (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  const processItem = (t: any) => {
+    if (t && typeof t === "object" && t.id && (typeof t.text === "string" || typeof t.text === "number")) {
+      const priority = t.priority === "high" || t.priority === "low" ? t.priority : "medium";
+      const sanitized: TodoTask = {
+        id: String(t.id),
+        text: String(t.text),
+        completed: Boolean(t.completed),
+        priority,
+        category: typeof t.category === "string" && t.category ? t.category : "general",
+        createdAt: typeof t.createdAt === "string" && t.createdAt ? t.createdAt : new Date().toISOString(),
+      };
+      map.set(sanitized.id, sanitized);
+    }
+  };
+  if (Array.isArray(cloud)) cloud.forEach(processItem);
+  if (Array.isArray(local)) local.forEach(processItem);
+
+  return Array.from(map.values()).sort((a, b) => {
+    const tA = new Date(a.createdAt).getTime();
+    const tB = new Date(b.createdAt).getTime();
+    return (isNaN(tB) ? 0 : tB) - (isNaN(tA) ? 0 : tA);
+  });
 }
 
 export function mergeTags(local: Tag[], cloud: Tag[]): Tag[] {
   const map = new Map<string, Tag>();
-  for (const t of cloud) map.set(t.name, t);
-  for (const t of local) map.set(t.name, t);
+  const processItem = (t: any) => {
+    if (t && typeof t === "object" && t.name) {
+      const name = String(t.name).trim().toLowerCase();
+      if (name) {
+        map.set(name, {
+          id: typeof t.id === "string" ? t.id : safeUUID(),
+          name,
+        });
+      }
+    }
+  };
+  if (Array.isArray(cloud)) cloud.forEach(processItem);
+  if (Array.isArray(local)) local.forEach(processItem);
   return Array.from(map.values());
 }
 
