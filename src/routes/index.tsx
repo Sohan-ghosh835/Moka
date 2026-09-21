@@ -17,7 +17,7 @@ import {
   UserCheck,
   X,
 } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { BottomBar, NavTab } from "../components/BottomBar";
 import Carousel, { CarouselItemData } from "../components/Carousel";
 import { Slider } from "../components/ui/slider";
@@ -85,6 +85,41 @@ declare global {
       exportFile: (filename: string, content: string) => Promise<{ ok: boolean }>;
       importFile?: () => Promise<{ ok: boolean; data?: { entries?: Entry[]; privacy?: boolean; tags?: Tag[]; todos?: TodoTask[] } }>;
     };
+  }
+}
+
+class TodoErrorBoundary extends Component<{ children: ReactNode; onReset?: () => void }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode; onReset?: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.error("Todo Tab Error Caught:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="panel p-6 text-center my-6 max-w-md mx-auto rise">
+          <h3 className="font-display text-lg font-bold text-foreground mb-2">Task Planner Reset</h3>
+          <p className="font-mono text-xs text-muted-foreground mb-4">
+            An unexpected render error occurred with your tasks. Click below to clear state.
+          </p>
+          <button
+            onClick={() => {
+              this.setState({ hasError: false });
+              this.props.onReset?.();
+            }}
+            className="rounded-md bg-primary px-4 py-2 font-mono text-xs font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            Reset Task Data
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
   }
 }
 
@@ -1102,265 +1137,266 @@ function Waypoint() {
 
         {/* PAGE 4: TODO TAB */}
         {activeTab === "Todo" && (
-          <div className="flex flex-col gap-5 pt-5">
-            {/* Top Row: Task Creator & Overview Stats */}
-            <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
-              {/* Task Creator Card */}
-              <section className="panel min-w-0 p-5">
-                <div className="mb-4 border-b border-border/50 pb-3">
-                  <h2 className="font-display text-base font-bold text-foreground">Task Planner</h2>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                    Organize your daily tasks & priorities
-                  </p>
-                </div>
+          <TodoErrorBoundary onReset={() => setTodos([])}>
+            <div className="flex flex-col gap-5 pt-5">
+              {/* Top Row: Task Creator & Overview Stats */}
+              <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
+                {/* Task Creator Card */}
+                <section className="panel min-w-0 p-5">
+                  <div className="mb-4 border-b border-border/50 pb-3">
+                    <h2 className="font-display text-base font-bold text-foreground">Task Planner</h2>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                      Organize your daily tasks & priorities
+                    </p>
+                  </div>
 
-                <div className="flex flex-col gap-3">
-                  <input
-                    type="text"
-                    value={newTodoText}
-                    onChange={(e) => setNewTodoText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        addTodo();
-                      }
-                    }}
-                    placeholder="What do you need to accomplish?"
-                    className="w-full rounded-lg bg-background/50 p-3 text-sm text-foreground ring-1 ring-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
-                  />
+                  <div className="flex flex-col gap-3">
+                    <input
+                      type="text"
+                      value={newTodoText}
+                      onChange={(e) => setNewTodoText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          addTodo();
+                        }
+                      }}
+                      placeholder="What do you need to accomplish?"
+                      className="w-full rounded-lg bg-background/50 p-3 text-sm text-foreground ring-1 ring-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                    />
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono text-[10px] uppercase text-muted-foreground">Priority:</span>
-                      {(["low", "medium", "high"] as TodoPriority[]).map((p) => (
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[10px] uppercase text-muted-foreground">Priority:</span>
+                        {(["low", "medium", "high"] as TodoPriority[]).map((p) => (
+                          <button
+                            key={p}
+                            type="button"
+                            onClick={() => setNewTodoPriority(p)}
+                            className={`rounded px-2.5 py-1 font-mono text-[10.5px] uppercase transition-colors ${
+                              newTodoPriority === p
+                                ? p === "high"
+                                  ? "bg-rose-500/80 text-white font-bold ring-1 ring-rose-400"
+                                  : p === "medium"
+                                  ? "bg-primary text-primary-foreground font-bold ring-1 ring-primary/60"
+                                  : "bg-muted text-foreground font-bold ring-1 ring-border"
+                                : "bg-background/40 text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
+                        <span className="font-mono text-[10px] uppercase text-muted-foreground shrink-0">Category:</span>
+                        <input
+                          type="text"
+                          value={newTodoCategory}
+                          onChange={(e) => setNewTodoCategory(e.target.value)}
+                          placeholder="study, health..."
+                          className="w-full rounded-md bg-background/40 px-2.5 py-1 text-xs text-foreground ring-1 ring-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
+                        />
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={addTodo}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/85 shadow-md shadow-primary/20"
+                      >
+                        <Plus size={15} /> Add Task
+                      </button>
+                    </div>
+                  </div>
+                </section>
+
+                {/* Task Progress & Statistics Card */}
+                <section className="panel min-w-0 p-5 flex flex-col justify-between">
+                  <div>
+                    <h2 className="font-display text-base font-bold text-foreground mb-1">Task Progress</h2>
+                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-4">
+                      Overview of your productivity
+                    </p>
+
+                    <div className="grid grid-cols-3 gap-2 text-center mb-4">
+                      <div className="rounded-lg bg-background/40 p-2.5 ring-1 ring-border">
+                        <p className="font-mono text-[10px] uppercase text-muted-foreground">Total</p>
+                        <p className="mt-0.5 font-display text-xl font-bold text-foreground">{todoStats.total}</p>
+                      </div>
+                      <div className="rounded-lg bg-background/40 p-2.5 ring-1 ring-border">
+                        <p className="font-mono text-[10px] uppercase text-muted-foreground">Pending</p>
+                        <p className="mt-0.5 font-display text-xl font-bold text-amber-300">{todoStats.pending}</p>
+                      </div>
+                      <div className="rounded-lg bg-background/40 p-2.5 ring-1 ring-border">
+                        <p className="font-mono text-[10px] uppercase text-muted-foreground">Done</p>
+                        <p className="mt-0.5 font-display text-xl font-bold text-emerald-300">{todoStats.completed}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center text-xs font-mono mb-1.5">
+                      <span className="text-muted-foreground uppercase tracking-wider">Completion Rate</span>
+                      <span className="font-bold text-foreground">{todoStats.rate}%</span>
+                    </div>
+                    <div className="h-2 w-full overflow-hidden rounded-full bg-primary/20">
+                      <div
+                        className="h-full bg-primary transition-all duration-300 rounded-full"
+                        style={{ width: `${todoStats.rate}%` }}
+                      />
+                    </div>
+                  </div>
+                </section>
+              </div>
+
+              {/* Task Manager List & Filters Feed */}
+              <section className="panel min-w-0 p-4 sm:p-5">
+                <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
+                  <div className="flex items-center gap-2">
+                    <CheckSquare size={18} className="text-primary" />
+                    <div>
+                      <h2 className="font-display text-base font-bold text-foreground">Task List</h2>
+                      <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
+                        Showing {filteredTodos.length} {filteredTodos.length === 1 ? "task" : "tasks"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-2">
+                    <input
+                      value={todoQuery}
+                      onChange={(e) => setTodoQuery(e.target.value)}
+                      placeholder="Search tasks..."
+                      className="w-36 min-w-0 rounded-md bg-background/40 px-3 py-1 text-xs text-foreground ring-1 ring-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 sm:w-44"
+                    />
+
+                    <div className="flex items-center gap-1 rounded-md bg-background/40 p-1 ring-1 ring-border">
+                      {(["all", "active", "completed"] as const).map((f) => (
                         <button
-                          key={p}
+                          key={f}
                           type="button"
-                          onClick={() => setNewTodoPriority(p)}
-                          className={`rounded px-2.5 py-1 font-mono text-[10.5px] uppercase transition-colors ${
-                            newTodoPriority === p
-                              ? p === "high"
-                                ? "bg-rose-500/80 text-white font-bold ring-1 ring-rose-400"
-                                : p === "medium"
-                                ? "bg-primary text-primary-foreground font-bold ring-1 ring-primary/60"
-                                : "bg-muted text-foreground font-bold ring-1 ring-border"
-                              : "bg-background/40 text-muted-foreground hover:text-foreground"
+                          onClick={() => setTodoFilter(f)}
+                          className={`rounded px-2.5 py-0.5 font-mono text-[10px] uppercase transition-colors ${
+                            todoFilter === f
+                              ? "bg-primary text-primary-foreground font-semibold"
+                              : "text-muted-foreground hover:text-foreground"
                           }`}
                         >
-                          {p}
+                          {f}
                         </button>
                       ))}
                     </div>
 
-                    <div className="flex items-center gap-1.5 flex-1 min-w-[160px]">
-                      <span className="font-mono text-[10px] uppercase text-muted-foreground shrink-0">Category:</span>
-                      <input
-                        type="text"
-                        value={newTodoCategory}
-                        onChange={(e) => setNewTodoCategory(e.target.value)}
-                        placeholder="study, health..."
-                        className="w-full rounded-md bg-background/40 px-2.5 py-1 text-xs text-foreground ring-1 ring-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60"
-                      />
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={addTodo}
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-xs font-semibold text-primary-foreground transition-colors hover:bg-primary/85 shadow-md shadow-primary/20"
-                    >
-                      <Plus size={15} /> Add Task
-                    </button>
-                  </div>
-                </div>
-              </section>
-
-              {/* Task Progress & Statistics Card */}
-              <section className="panel min-w-0 p-5 flex flex-col justify-between">
-                <div>
-                  <h2 className="font-display text-base font-bold text-foreground mb-1">Task Progress</h2>
-                  <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-4">
-                    Overview of your productivity
-                  </p>
-
-                  <div className="grid grid-cols-3 gap-2 text-center mb-4">
-                    <div className="rounded-lg bg-background/40 p-2.5 ring-1 ring-border">
-                      <p className="font-mono text-[10px] uppercase text-muted-foreground">Total</p>
-                      <p className="mt-0.5 font-display text-xl font-bold text-foreground">{todoStats.total}</p>
-                    </div>
-                    <div className="rounded-lg bg-background/40 p-2.5 ring-1 ring-border">
-                      <p className="font-mono text-[10px] uppercase text-muted-foreground">Pending</p>
-                      <p className="mt-0.5 font-display text-xl font-bold text-amber-300">{todoStats.pending}</p>
-                    </div>
-                    <div className="rounded-lg bg-background/40 p-2.5 ring-1 ring-border">
-                      <p className="font-mono text-[10px] uppercase text-muted-foreground">Done</p>
-                      <p className="mt-0.5 font-display text-xl font-bold text-emerald-300">{todoStats.completed}</p>
-                    </div>
+                    {(Array.isArray(todos) ? todos : []).some((t) => t && t.completed) && (
+                      <button
+                        onClick={clearCompletedTodos}
+                        className="rounded px-2.5 py-1 font-mono text-[10px] text-muted-foreground ring-1 ring-border hover:text-foreground hover:bg-background/60 transition-colors"
+                      >
+                        Clear Done
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div>
-                  <div className="flex justify-between items-center text-xs font-mono mb-1.5">
-                    <span className="text-muted-foreground uppercase tracking-wider">Completion Rate</span>
-                    <span className="font-bold text-foreground">{todoStats.rate}%</span>
-                  </div>
-                  <div className="h-2 w-full overflow-hidden rounded-full bg-primary/20">
-                    <div
-                      className="h-full bg-primary transition-all duration-300 rounded-full"
-                      style={{ width: `${todoStats.rate}%` }}
-                    />
-                  </div>
+                <div className="divide-y divide-border/60">
+                  {filteredTodos.length ? (
+                    filteredTodos.slice(0, 50).map((task, index) => (
+                      <div
+                        key={task.id || `task-${index}`}
+                        className="group flex items-start justify-between gap-3 py-3 border-b border-border/40 last:border-0"
+                      >
+                        <div className="min-w-0 flex-1 flex items-start gap-3">
+                          <button
+                            type="button"
+                            role="checkbox"
+                            aria-checked={task.completed}
+                            aria-label={`Toggle task: ${task.text}`}
+                            onClick={() => toggleTodo(task.id)}
+                            className={`shrink-0 mt-0.5 size-[22px] rounded-[7px] border-2 flex items-center justify-center transition-transform ${
+                              task.completed
+                                ? "bg-primary border-primary scale-95"
+                                : "border-primary/40 bg-transparent"
+                            }`}
+                          >
+                            {task.completed && (
+                              <svg viewBox="0 0 24 24" className="size-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M5 14L8.5 17.5L19 6.5" />
+                              </svg>
+                            )}
+                          </button>
+                          <div
+                            onClick={() => toggleTodo(task.id)}
+                            className="min-w-0 flex-1 flex flex-col gap-1 cursor-pointer select-none"
+                          >
+                            <span
+                              className={`text-sm font-medium break-words ${
+                                task.completed
+                                  ? "line-through decoration-primary/80 decoration-2 text-muted-foreground/60 opacity-60"
+                                  : "text-foreground"
+                              }`}
+                            >
+                              {task.text}
+                            </span>
+                            <div className="flex items-center gap-2 font-mono text-[9.5px] text-muted-foreground">
+                              {task.category && (
+                                <span className="rounded bg-primary/15 px-1.5 py-0.5 ring-1 ring-border">
+                                  #{task.category}
+                                </span>
+                              )}
+                              {task.createdAt && (
+                                <span>
+                                  {(() => {
+                                    try {
+                                      const d = new Date(task.createdAt);
+                                      return isNaN(d.getTime())
+                                        ? ""
+                                        : d.toLocaleDateString(undefined, {
+                                            month: "short",
+                                            day: "numeric",
+                                          });
+                                    } catch {
+                                      return "";
+                                    }
+                                  })()}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 shrink-0 self-start mt-0.5">
+                          <span
+                            className={`rounded px-2 py-0.5 font-mono text-[9px] uppercase font-bold ring-1 ${
+                              task.priority === "high"
+                                ? "bg-rose-500/20 text-rose-300 ring-rose-500/40"
+                                : task.priority === "medium"
+                                ? "bg-primary/20 text-primary-foreground ring-primary/40"
+                                : "bg-muted/40 text-muted-foreground ring-border"
+                            }`}
+                          >
+                            {task.priority}
+                          </span>
+
+                          <button
+                            onClick={() => deleteTodo(task.id)}
+                            className="icon-control size-6 opacity-60 group-hover:opacity-100 transition-opacity"
+                            aria-label="Delete task"
+                            title="Delete task"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="py-12 text-center font-mono text-xs text-muted-foreground italic">
+                      {Array.isArray(todos) && todos.length ? "No tasks match your filter/search criteria." : "No tasks added yet — create your first task above!"}
+                    </div>
+                  )}
                 </div>
               </section>
             </div>
-
-            {/* Task Manager List & Filters Feed */}
-            <section className="panel min-w-0 p-4 sm:p-5">
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
-                <div className="flex items-center gap-2">
-                  <CheckSquare size={18} className="text-primary" />
-                  <div>
-                    <h2 className="font-display text-base font-bold text-foreground">Task List</h2>
-                    <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
-                      Showing {filteredTodos.length} {filteredTodos.length === 1 ? "task" : "tasks"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <input
-                    value={todoQuery}
-                    onChange={(e) => setTodoQuery(e.target.value)}
-                    placeholder="Search tasks..."
-                    className="w-36 min-w-0 rounded-md bg-background/40 px-3 py-1 text-xs text-foreground ring-1 ring-border placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 sm:w-44"
-                  />
-
-                  <div className="flex items-center gap-1 rounded-md bg-background/40 p-1 ring-1 ring-border">
-                    {(["all", "active", "completed"] as const).map((f) => (
-                      <button
-                        key={f}
-                        type="button"
-                        onClick={() => setTodoFilter(f)}
-                        className={`rounded px-2.5 py-0.5 font-mono text-[10px] uppercase transition-colors ${
-                          todoFilter === f
-                            ? "bg-primary text-primary-foreground font-semibold"
-                            : "text-muted-foreground hover:text-foreground"
-                        }`}
-                      >
-                        {f}
-                      </button>
-                    ))}
-                  </div>
-
-                  {todos.some((t) => t && t.completed) && (
-                    <button
-                      onClick={clearCompletedTodos}
-                      className="rounded px-2.5 py-1 font-mono text-[10px] text-muted-foreground ring-1 ring-border hover:text-foreground hover:bg-background/60 transition-colors"
-                    >
-                      Clear Done
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="divide-y divide-border/60">
-                {filteredTodos.length ? (
-                  filteredTodos.slice(0, 50).map((task) => (
-                    <div
-                      key={task.id}
-                      className="group flex items-start justify-between gap-3 py-3 border-b border-border/40 last:border-0"
-                    >
-                      <div className="min-w-0 flex-1 flex items-start gap-3">
-                        <button
-                          type="button"
-                          role="checkbox"
-                          aria-checked={task.completed}
-                          aria-label={`Toggle task: ${task.text}`}
-                          onClick={() => toggleTodo(task.id)}
-                          className={`shrink-0 mt-0.5 size-[22px] rounded-[7px] border-2 flex items-center justify-center ${
-                            task.completed
-                              ? "bg-[oklch(0.46_0.13_353)] border-[oklch(0.46_0.13_353)] scale-95"
-                              : "border-[oklch(0.83_0.075_351)] bg-transparent"
-                          }`}
-                        >
-                          {task.completed && (
-                            <svg viewBox="0 0 24 24" className="size-3.5 text-white" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                              <path d="M5 14L8.5 17.5L19 6.5" />
-                            </svg>
-                          )}
-                        </button>
-                        <div
-                          onClick={() => toggleTodo(task.id)}
-                          className="min-w-0 flex-1 flex flex-col gap-1 cursor-pointer select-none"
-                        >
-                          <span
-                            className={`text-sm font-medium break-words ${
-                              task.completed
-                                ? "line-through decoration-primary/80 decoration-2 text-muted-foreground/60 opacity-60"
-                                : "text-foreground"
-                            }`}
-                          >
-                            {task.text}
-                          </span>
-                          <div className="flex items-center gap-2 font-mono text-[9.5px] text-muted-foreground">
-                            {task.category && (
-                              <span className="rounded bg-primary/15 px-1.5 py-0.5 ring-1 ring-border">
-                                #{task.category}
-                              </span>
-                            )}
-                            {task.createdAt && (
-                              <span>
-                                {(() => {
-                                  try {
-                                    const d = new Date(task.createdAt);
-                                    return isNaN(d.getTime())
-                                      ? ""
-                                      : d.toLocaleDateString(undefined, {
-                                          month: "short",
-                                          day: "numeric",
-                                        });
-                                  } catch {
-                                    return "";
-                                  }
-                                })()}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-2 shrink-0 self-start mt-0.5">
-
-                        <span
-                          className={`rounded px-2 py-0.5 font-mono text-[9px] uppercase font-bold ring-1 ${
-                            task.priority === "high"
-                              ? "bg-rose-500/20 text-rose-300 ring-rose-500/40"
-                              : task.priority === "medium"
-                              ? "bg-primary/20 text-primary-foreground ring-primary/40"
-                              : "bg-muted/40 text-muted-foreground ring-border"
-                          }`}
-                        >
-                          {task.priority}
-                        </span>
-
-                        <button
-                          onClick={() => deleteTodo(task.id)}
-                          className="icon-control size-6 opacity-60 group-hover:opacity-100 transition-opacity"
-                          aria-label="Delete task"
-                          title="Delete task"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="py-12 text-center font-mono text-xs text-muted-foreground italic">
-                    {Array.isArray(todos) && todos.length ? "No tasks match your filter/search criteria." : "No tasks added yet — create your first task above!"}
-                  </div>
-                )}
-              </div>
-            </section>
-          </div>
+          </TodoErrorBoundary>
         )}
       </div>
 
