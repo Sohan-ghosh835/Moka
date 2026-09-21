@@ -1076,7 +1076,7 @@ function Waypoint() {
             {/* Top Row: Task Creator & Overview Stats */}
             <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
               {/* Task Creator Card */}
-              <section className="panel rise min-w-0 p-5">
+              <section className="panel min-w-0 p-5">
                 <div className="mb-4 border-b border-border/50 pb-3">
                   <h2 className="font-display text-base font-bold text-foreground">Task Planner</h2>
                   <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground">
@@ -1145,7 +1145,7 @@ function Waypoint() {
               </section>
 
               {/* Task Progress & Statistics Card */}
-              <section className="panel rise min-w-0 p-5 flex flex-col justify-between">
+              <section className="panel min-w-0 p-5 flex flex-col justify-between">
                 <div>
                   <h2 className="font-display text-base font-bold text-foreground mb-1">Task Progress</h2>
                   <p className="font-mono text-[10px] uppercase tracking-[0.15em] text-muted-foreground mb-4">
@@ -1184,7 +1184,7 @@ function Waypoint() {
             </div>
 
             {/* Task Manager List & Filters Feed */}
-            <section className="panel rise min-w-0 p-4 sm:p-5">
+            <section className="panel min-w-0 p-4 sm:p-5">
               <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-b border-border/50 pb-3">
                 <div className="flex items-center gap-2">
                   <CheckSquare size={18} className="text-primary" />
@@ -1234,7 +1234,7 @@ function Waypoint() {
 
               <div className="divide-y divide-border/60">
                 {filteredTodos.length ? (
-                  filteredTodos.map((task) => (
+                  filteredTodos.slice(0, 50).map((task) => (
                     <div
                       key={task.id}
                       className="group flex items-start justify-between gap-3 py-3 border-b border-border/40 last:border-0"
@@ -1246,10 +1246,10 @@ function Waypoint() {
                           aria-checked={task.completed}
                           aria-label={`Toggle task: ${task.text}`}
                           onClick={() => toggleTodo(task.id)}
-                          className={`shrink-0 mt-0.5 size-[22px] rounded-[7px] border-2 flex items-center justify-center transition-all duration-200 ${
+                          className={`shrink-0 mt-0.5 size-[22px] rounded-[7px] border-2 flex items-center justify-center ${
                             task.completed
                               ? "bg-[oklch(0.46_0.13_353)] border-[oklch(0.46_0.13_353)] scale-95"
-                              : "border-[oklch(0.83_0.075_351)] bg-transparent hover:bg-[oklch(0.83_0.075_351)]/10"
+                              : "border-[oklch(0.83_0.075_351)] bg-transparent"
                           }`}
                         >
                           {task.completed && (
@@ -1263,10 +1263,10 @@ function Waypoint() {
                           className="min-w-0 flex-1 flex flex-col gap-1 cursor-pointer select-none"
                         >
                           <span
-                            className={`text-sm font-medium break-words transition-all duration-300 ${
+                            className={`text-sm font-medium break-words ${
                               task.completed
                                 ? "line-through decoration-primary/80 decoration-2 text-muted-foreground/60 opacity-60"
-                                : "text-foreground hover:text-foreground/90"
+                                : "text-foreground"
                             }`}
                           >
                             {task.text}
