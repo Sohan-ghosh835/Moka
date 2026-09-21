@@ -1,0 +1,82 @@
+.carousel-container {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 16px;
+  background: var(--card);
+  backdrop-filter: blur(16px);
+  --outer-r: 20px;
+  --p-distance: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.carousel-track {
+  display: flex;
+}
+
+.carousel-item {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  border: 1px solid var(--border);
+  border-radius: calc(var(--outer-r) - var(--p-distance));
+  background-color: oklch(0.2 0.045 351 / 0.85);
+  overflow: hidden;
+  cursor: grab;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.carousel-item-active {
+  border-color: var(--ring);
+  box-shadow: 0 0 20px oklch(0.46 0.13 353 / 0.35);
+}
+
+.carousel-item:active {
+  cursor: grabbing;
+}
+
+.carousel-indicators-container {
+  display: flex;
+  width: 100%;
+  justify-content: center;
+}
+
+.carousel-indicators {
+  margin-top: 14px;
+  display: flex;
+  width: 160px;
+  justify-content: center;
+  gap: 8px;
+}
+
+.carousel-indicator {
+  height: 8px;
+  width: 8px;
+  border: none;
+  padding: 0;
+  appearance: none;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: background-color 150ms, transform 150ms;
+}
+
+.carousel-indicator:focus-visible {
+  outline: 2px solid var(--foreground);
+  outline-offset: 2px;
+}
+
+.carousel-indicator.active {
+  background-color: var(--primary-foreground);
+  box-shadow: 0 0 8px var(--primary);
+}
+
+.carousel-indicator.inactive {
+  background-color: var(--muted-foreground);
+  opacity: 0.35;
+}

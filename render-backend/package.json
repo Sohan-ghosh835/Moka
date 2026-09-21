@@ -1,0 +1,19 @@
+{
+  "name": "moka-sync-backend",
+  "version": "1.0.0",
+  "description": "Moka Journal cloud sync backend for Render",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "init-db": "node init-db.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "pg": "^8.13.1"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
