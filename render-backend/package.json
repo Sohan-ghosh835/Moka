@@ -4,7 +4,7 @@
   "description": "Moka Journal cloud sync backend for Render",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node init-db.js && node server.js",
     "init-db": "node init-db.js"
   },
   "dependencies": {
