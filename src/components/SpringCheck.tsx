@@ -1,13 +1,11 @@
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { animate, useMotionValue, useMotionValueEvent, useReducedMotion } from "motion/react";
-import { Tick02Icon } from "@hugeicons/core-free-icons";
-
 import "./SpringCheck.css";
 
 const VISUAL_DURATION = 0.2;
 const RULE_END = 0.84;
 const SWELL = 0.35;
-const TICK_PATH = String(Tick02Icon[0][1].d);
+const TICK_PATH = "M5 14L8.5 17.5L19 6.5";
 const ORIGIN = { left: "left center", center: "center", right: "right center", none: "left center" };
 
 const clamp01 = (value: number) => Math.min(1, Math.max(0, value));
